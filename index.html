@@ -6,12 +6,27 @@
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
   body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; padding: 10px; }
-  #reader { margin: 20px auto; width: 90vw; max-width: 500px; height: auto; } /* Más ancho */
+  #reader {
+    margin: 20px auto;
+    width: 95vw;
+    max-width: 500px;
+    height: 400px;  /* altura fija para evitar errores en móviles */
+  }
   .msg { margin-top: 20px; font-size: 22px; font-weight: bold; }
   .nombre { font-size: 28px; font-weight: bold; margin-top: 10px; color: #2c3e50; }
   .ok { color: green; }
   .bloqueado { color: red; }
-  button { font-size: 20px; padding: 12px 25px; margin-top: 15px; cursor: pointer; }
+  button {
+    font-size: 20px;
+    padding: 12px 25px;
+    margin-top: 15px;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    background-color: #3498db;
+    color: white;
+  }
+  button:hover { background-color: #2980b9; }
 </style>
 </head>
 <body>
@@ -19,11 +34,16 @@
 <div id="reader"></div>
 <div id="mensaje" class="msg"></div>
 <div id="nombreEstudiante" class="nombre"></div>
-<button onclick="window.location.reload()">Reiniciar escaneo</button>
+<button id="reiniciarBtn">Reiniciar escaneo</button>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx92TPknHLScO6XpFMmHbuHQR6CGkBSY2S2SubMD9G4pc_pQhWOgMMkmmiEWrlqyvai/exec";
 
+// Inicializamos el escáner
+let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 });
+scanner.render(onScanSuccess);
+
+// Función que procesa el QR
 function procesarQR(qrData) {
   fetch(`${API_URL}?codigo=${qrData}`)
     .then(res => res.json())
@@ -36,8 +56,7 @@ function procesarQR(qrData) {
                                    resp.status === "bloqueado" ? "bloqueado" : "");
 
       if(resp.status === "ok" || resp.status === "bloqueado") {
-          // Mostrar nombre del estudiante
-          nombreDiv.textContent = resp.nombre || ""; // nombre viene desde Apps Script
+          nombreDiv.textContent = resp.nombre || "";
       } else {
           nombreDiv.textContent = "";
       }
@@ -49,13 +68,22 @@ function procesarQR(qrData) {
     });
 }
 
+// Función que se ejecuta al escanear un QR
 function onScanSuccess(qrData) {
   procesarQR(qrData);
 }
 
-// Configurar y lanzar el escáner
-const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 }); // recuadro más grande
-scanner.render(onScanSuccess);
+// Botón para reiniciar escaneo sin errores
+document.getElementById('reiniciarBtn').addEventListener('click', function() {
+  scanner.clear().then(() => {
+    document.getElementById('mensaje').textContent = "";
+    document.getElementById('nombreEstudiante').textContent = "";
+    scanner.render(onScanSuccess);
+  }).catch(err => {
+    console.error("Error reiniciando el escáner:", err);
+  });
+});
 </script>
 </body>
 </html>
+
