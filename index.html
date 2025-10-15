@@ -12,6 +12,10 @@
       padding: 10px;
     }
 
+    h1 {
+      color: #2c3e50;
+    }
+
     #mensaje {
       font-size: 22px;
       font-weight: bold;
@@ -26,12 +30,13 @@
 
     .ok { color: green; }
     .error { color: red; }
+    .bloqueado { color: orange; }
 
     #reader {
       margin: 0 auto;
       width: 95vw;
       max-width: 500px;
-      height: 300px; /* Reducido para que no tape mensajes */
+      height: 300px;
     }
 
     button {
@@ -53,14 +58,11 @@
 <body>
   <h1>Escanear QR - Escuela de Padres</h1>
 
-  <!-- 🟩 Ahora los mensajes van ANTES del escáner -->
   <div id="mensaje"></div>
   <div id="datosEstudiante"></div>
 
-  <!-- Escáner -->
   <div id="reader"></div>
 
-  <!-- Botón -->
   <button id="reiniciarBtn">Reiniciar escaneo</button>
 
   <!-- Audios -->
@@ -72,7 +74,8 @@
   </audio>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbx92TPknHLScO6XpFMmHbuHQR6CGkBSY2S2SubMD9G4pc_pQhWOgMMkmmiEWrlqyvai/exec";
+    // ✅ Nuevo enlace del Apps Script
+    const API_URL = "https://script.google.com/macros/s/AKfycbxZVsjdewIPsSHX1y-KcrJz5mNuwqHs1mAiG4_1u129L_ll0DMJ22UPALm5osTbxjzJ9g/exec";
 
     const sonidoOk = document.getElementById('sonido-ok');
     const sonidoError = document.getElementById('sonido-error');
@@ -89,8 +92,7 @@
           const msgDiv = document.getElementById('mensaje');
           const datosDiv = document.getElementById('datosEstudiante');
 
-          // Si se encontró el estudiante (hay nombre)
-          if (resp.nombre) {
+          if (resp.status === "ok") {
             msgDiv.textContent = "✅ Acceso permitido";
             msgDiv.className = "ok";
 
@@ -100,22 +102,40 @@
               <strong>Curso:</strong> ${resp.curso}<br>
               <strong>Accesos restantes:</strong> ${resp.accesos_restantes}
             `;
-
             sonidoOk.play().catch(() => {});
-          } else {
-            msgDiv.textContent = "❌ Estudiante no registrado";
+          } 
+          else if (resp.status === "bloqueado") {
+            msgDiv.textContent = "⚠️ Acceso bloqueado: ya usó sus accesos";
+            msgDiv.className = "bloqueado";
+
+            datosDiv.innerHTML = `
+              <strong>Nombre:</strong> ${resp.nombre}<br>
+              <strong>Grado:</strong> ${resp.grado}<br>
+              <strong>Curso:</strong> ${resp.curso}<br>
+              <strong>Accesos restantes:</strong> 0
+            `;
+            sonidoError.play().catch(() => {});
+          } 
+          else if (resp.status === "error") {
+            msgDiv.textContent = "❌ Código no encontrado";
+            msgDiv.className = "error";
+            datosDiv.innerHTML = "";
+            sonidoError.play().catch(() => {});
+          } 
+          else {
+            msgDiv.textContent = "❌ Respuesta no válida del servidor";
             msgDiv.className = "error";
             datosDiv.innerHTML = "";
             sonidoError.play().catch(() => {});
           }
 
-          // Pausa de 1 segundo
+          // Pausa breve antes de reactivar el escaneo
           escaneoActivo = false;
           scanner.clear().then(() => {
             setTimeout(() => {
               escaneoActivo = true;
               scanner.render(onScanSuccess);
-            }, 1000);
+            }, 1200);
           });
         })
         .catch(err => {
@@ -134,8 +154,6 @@
     }
 
     document.getElementById('reiniciarBtn').addEventListener('click', function() {
-      sonidoOk.play().catch(() => {});
-      sonidoError.play().catch(() => {});
       scanner.clear().then(() => {
         document.getElementById('mensaje').textContent = "";
         document.getElementById('datosEstudiante').innerHTML = "";
