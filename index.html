@@ -5,17 +5,21 @@
 <title>Control de Accesos - Escuela de Padres</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
-  body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; }
-  #reader { margin: 20px auto; width: 320px; }
-  .msg { margin-top: 20px; font-size: 18px; font-weight: bold; }
+  body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; padding: 10px; }
+  #reader { margin: 20px auto; width: 90vw; max-width: 500px; height: auto; } /* Más ancho */
+  .msg { margin-top: 20px; font-size: 22px; font-weight: bold; }
+  .nombre { font-size: 28px; font-weight: bold; margin-top: 10px; color: #2c3e50; }
   .ok { color: green; }
   .bloqueado { color: red; }
+  button { font-size: 20px; padding: 12px 25px; margin-top: 15px; cursor: pointer; }
 </style>
 </head>
 <body>
 <h1>Escanear QR - Escuela de Padres</h1>
 <div id="reader"></div>
 <div id="mensaje" class="msg"></div>
+<div id="nombreEstudiante" class="nombre"></div>
+<button onclick="window.location.reload()">Reiniciar escaneo</button>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx92TPknHLScO6XpFMmHbuHQR6CGkBSY2S2SubMD9G4pc_pQhWOgMMkmmiEWrlqyvai/exec";
@@ -25,12 +29,22 @@ function procesarQR(qrData) {
     .then(res => res.json())
     .then(resp => {
       const msgDiv = document.getElementById('mensaje');
+      const nombreDiv = document.getElementById('nombreEstudiante');
+
       msgDiv.textContent = resp.mensaje;
       msgDiv.className = "msg " + (resp.status === "ok" ? "ok" :
                                    resp.status === "bloqueado" ? "bloqueado" : "");
+
+      if(resp.status === "ok" || resp.status === "bloqueado") {
+          // Mostrar nombre del estudiante
+          nombreDiv.textContent = resp.nombre || ""; // nombre viene desde Apps Script
+      } else {
+          nombreDiv.textContent = "";
+      }
     })
     .catch(err => {
       document.getElementById('mensaje').textContent = "Error de conexión con el servidor.";
+      document.getElementById('nombreEstudiante').textContent = "";
       console.error(err);
     });
 }
@@ -39,7 +53,8 @@ function onScanSuccess(qrData) {
   procesarQR(qrData);
 }
 
-const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+// Configurar y lanzar el escáner
+const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 }); // recuadro más grande
 scanner.render(onScanSuccess);
 </script>
 </body>
