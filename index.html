@@ -12,25 +12,26 @@
       padding: 10px;
     }
 
-    #mensaje, #nombreEstudiante {
-      margin-bottom: 15px;
-      font-size: 24px;
+    #mensaje {
+      font-size: 22px;
       font-weight: bold;
+      margin-bottom: 10px;
     }
 
-    .msg.ok { color: green; }
-    .msg.bloqueado { color: red; }
-    .nombre {
-      font-size: 28px;
+    #datosEstudiante {
+      font-size: 20px;
       color: #2c3e50;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
+
+    .ok { color: green; }
+    .error { color: red; }
 
     #reader {
       margin: 0 auto;
       width: 95vw;
       max-width: 500px;
-      height: 400px;
+      height: 300px; /* Reducido para que no tape mensajes */
     }
 
     button {
@@ -52,9 +53,9 @@
 <body>
   <h1>Escanear QR - Escuela de Padres</h1>
 
-  <!-- Mensajes arriba del lector -->
-  <div id="mensaje" class="msg"></div>
-  <div id="nombreEstudiante" class="nombre"></div>
+  <!-- 🟩 Ahora los mensajes van ANTES del escáner -->
+  <div id="mensaje"></div>
+  <div id="datosEstudiante"></div>
 
   <!-- Escáner -->
   <div id="reader"></div>
@@ -76,10 +77,9 @@
     const sonidoOk = document.getElementById('sonido-ok');
     const sonidoError = document.getElementById('sonido-error');
 
-    let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 });
+    let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
     let escaneoActivo = true;
 
-    // Renderizar escáner
     scanner.render(onScanSuccess);
 
     function procesarQR(qrData) {
@@ -87,23 +87,29 @@
         .then(res => res.json())
         .then(resp => {
           const msgDiv = document.getElementById('mensaje');
-          const nombreDiv = document.getElementById('nombreEstudiante');
+          const datosDiv = document.getElementById('datosEstudiante');
 
-          msgDiv.textContent = resp.mensaje;
-          msgDiv.className = "msg " + (resp.status === "ok" ? "ok" :
-                                       resp.status === "bloqueado" ? "bloqueado" : "");
+          // Si se encontró el estudiante (hay nombre)
+          if (resp.nombre) {
+            msgDiv.textContent = "✅ Acceso permitido";
+            msgDiv.className = "ok";
 
-          // 👇 AJUSTA ESTO según la propiedad que tu backend devuelve
-          nombreDiv.textContent = resp.nombre || "";
+            datosDiv.innerHTML = `
+              <strong>Nombre:</strong> ${resp.nombre}<br>
+              <strong>Grado:</strong> ${resp.grado}<br>
+              <strong>Curso:</strong> ${resp.curso}<br>
+              <strong>Accesos restantes:</strong> ${resp.accesos_restantes}
+            `;
 
-          // Reproducir sonido según el estado
-          if (resp.status === "ok") {
-            sonidoOk.play().catch(err => console.warn("Autoplay bloqueado"));
+            sonidoOk.play().catch(() => {});
           } else {
-            sonidoError.play().catch(err => console.warn("Autoplay bloqueado"));
+            msgDiv.textContent = "❌ Estudiante no registrado";
+            msgDiv.className = "error";
+            datosDiv.innerHTML = "";
+            sonidoError.play().catch(() => {});
           }
 
-          // Pausa de 1 segundo antes de volver a escanear
+          // Pausa de 1 segundo
           escaneoActivo = false;
           scanner.clear().then(() => {
             setTimeout(() => {
@@ -113,9 +119,9 @@
           });
         })
         .catch(err => {
-          document.getElementById('mensaje').textContent = "Error de conexión con el servidor.";
-          document.getElementById('mensaje').className = "msg bloqueado";
-          document.getElementById('nombreEstudiante').textContent = "";
+          document.getElementById('mensaje').textContent = "❌ Error al conectar con el servidor.";
+          document.getElementById('mensaje').className = "error";
+          document.getElementById('datosEstudiante').innerHTML = "";
           sonidoError.play().catch(() => {});
           console.error(err);
         });
@@ -127,13 +133,12 @@
       procesarQR(qrData);
     }
 
-    // Activar sonido tras una interacción (permite autoplay)
     document.getElementById('reiniciarBtn').addEventListener('click', function() {
-      sonidoOk.play().catch(() => {}); // Esto desbloquea el autoplay para navegadores
+      sonidoOk.play().catch(() => {});
       sonidoError.play().catch(() => {});
       scanner.clear().then(() => {
         document.getElementById('mensaje').textContent = "";
-        document.getElementById('nombreEstudiante').textContent = "";
+        document.getElementById('datosEstudiante').innerHTML = "";
         escaneoActivo = true;
         scanner.render(onScanSuccess);
       }).catch(err => {
