@@ -5,45 +5,81 @@
 <title>Control de Accesos - Escuela de Padres</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <style>
-  body { font-family: Arial, sans-serif; text-align: center; background: #f0f4f8; padding: 10px; }
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background: #f0f4f8;
+    padding: 10px;
+  }
+
+  #mensaje, #nombreEstudiante {
+    margin-bottom: 15px;
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .msg.ok { color: green; }
+  .msg.bloqueado { color: red; }
+  .nombre {
+    font-size: 28px;
+    color: #2c3e50;
+    margin-bottom: 30px;
+  }
+
   #reader {
-    margin: 20px auto;
+    margin: 0 auto;
     width: 95vw;
     max-width: 500px;
-    height: 400px;  /* altura fija para evitar errores en móviles */
+    height: 400px;
   }
-  .msg { margin-top: 20px; font-size: 22px; font-weight: bold; }
-  .nombre { font-size: 28px; font-weight: bold; margin-top: 10px; color: #2c3e50; }
-  .ok { color: green; }
-  .bloqueado { color: red; }
+
   button {
     font-size: 20px;
     padding: 12px 25px;
-    margin-top: 15px;
+    margin-top: 25px;
     cursor: pointer;
     border-radius: 8px;
     border: none;
     background-color: #3498db;
     color: white;
   }
-  button:hover { background-color: #2980b9; }
+
+  button:hover {
+    background-color: #2980b9;
+  }
 </style>
 </head>
 <body>
 <h1>Escanear QR - Escuela de Padres</h1>
-<div id="reader"></div>
+
+<!-- Mensajes arriba del lector -->
 <div id="mensaje" class="msg"></div>
 <div id="nombreEstudiante" class="nombre"></div>
+
+<!-- Escáner -->
+<div id="reader"></div>
+
+<!-- Botón -->
 <button id="reiniciarBtn">Reiniciar escaneo</button>
+
+<!-- Audios -->
+<audio id="sonido-ok" src="https://cdn.pixabay.com/audio/2022/03/15/audio_c5bf2983e3.mp3"></audio>
+<audio id="sonido-error" src="https://cdn.pixabay.com/audio/2022/03/15/audio_6df833e0d5.mp3"></audio>
 
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbx92TPknHLScO6XpFMmHbuHQR6CGkBSY2S2SubMD9G4pc_pQhWOgMMkmmiEWrlqyvai/exec";
 
-// Inicializamos el escáner
+// Cargar sonidos
+const sonidoOk = document.getElementById('sonido-ok');
+const sonidoError = document.getElementById('sonido-error');
+
+// Escáner
 let scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 350 });
+let escaneoActivo = true;
+
 scanner.render(onScanSuccess);
 
-// Función que procesa el QR
+// Procesar QR
 function procesarQR(qrData) {
   fetch(`${API_URL}?codigo=${qrData}`)
     .then(res => res.json())
@@ -55,29 +91,47 @@ function procesarQR(qrData) {
       msgDiv.className = "msg " + (resp.status === "ok" ? "ok" :
                                    resp.status === "bloqueado" ? "bloqueado" : "");
 
-      if(resp.status === "ok" || resp.status === "bloqueado") {
-          nombreDiv.textContent = resp.nombre || "";
+      nombreDiv.textContent = (resp.status === "ok" || resp.status === "bloqueado") ? (resp.nombre || "") : "";
+
+      // Reproducir sonido
+      if (resp.status === "ok") {
+        sonidoOk.play();
       } else {
-          nombreDiv.textContent = "";
+        sonidoError.play();
       }
+
+      // Pausar escaneo por 2 segundos
+      escaneoActivo = false;
+      scanner.clear().then(() => {
+        setTimeout(() => {
+          escaneoActivo = true;
+          scanner.render(onScanSuccess);
+        }, 2000); // 2 segundos
+      });
+
     })
     .catch(err => {
       document.getElementById('mensaje').textContent = "Error de conexión con el servidor.";
+      document.getElementById('mensaje').className = "msg bloqueado";
       document.getElementById('nombreEstudiante').textContent = "";
+      sonidoError.play();
       console.error(err);
     });
 }
 
-// Función que se ejecuta al escanear un QR
+// Al escanear
 function onScanSuccess(qrData) {
+  if (!escaneoActivo) return;
+  escaneoActivo = false; // Evita múltiples llamadas antes de detener el escáner
   procesarQR(qrData);
 }
 
-// Botón para reiniciar escaneo sin errores
+// Botón de reinicio manual
 document.getElementById('reiniciarBtn').addEventListener('click', function() {
   scanner.clear().then(() => {
     document.getElementById('mensaje').textContent = "";
     document.getElementById('nombreEstudiante').textContent = "";
+    escaneoActivo = true;
     scanner.render(onScanSuccess);
   }).catch(err => {
     console.error("Error reiniciando el escáner:", err);
@@ -86,4 +140,3 @@ document.getElementById('reiniciarBtn').addEventListener('click', function() {
 </script>
 </body>
 </html>
-
