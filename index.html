@@ -1,0 +1,50 @@
+!DOCTYPE html
+html lang=es
+head
+meta charset=UTF-8
+titleControl de Accesos - Escuela de Padrestitle
+script src=httpsunpkg.comhtml5-qrcodescript
+style
+  body { font-family Arial, sans-serif; text-align center; background #f0f4f8; }
+  #reader { margin 20px auto; width 320px; }
+  .msg { margin-top 20px; font-size 18px; font-weight bold; }
+  .ok { color green; }
+  .bloqueado { color red; }
+style
+head
+body
+h1Escanear QR - Escuela de Padresh1
+div id=readerdiv
+div id=mensaje class=msgdiv
+
+script
+ URL de tu Apps Script
+const API_URL = httpsscript.google.commacrossAKfycbx92TPknHLScO6XpFMmHbuHQR6CGkBSY2S2SubMD9G4pc_pQhWOgMMkmmiEWrlqyvaiexec;
+
+ Función para procesar el QR
+function procesarQR(qrData) {
+  fetch(`${API_URL}codigo=${qrData}`)
+    .then(res = res.json())
+    .then(resp = {
+      const msgDiv = document.getElementById('mensaje');
+      msgDiv.textContent = resp.mensaje;
+      msgDiv.className = msg  + (resp.status === ok  ok 
+                                   resp.status === bloqueado  bloqueado  );
+    })
+    .catch(err = {
+      document.getElementById('mensaje').textContent = Error de conexión con el servidor.;
+      console.error(err);
+    });
+}
+
+ Función que se ejecuta al escanear un QR
+function onScanSuccess(qrData) {
+  procesarQR(qrData);
+}
+
+ Configurar y lanzar el escáner
+const scanner = new Html5QrcodeScanner(reader, { fps 10, qrbox 250 });
+scanner.render(onScanSuccess);
+script
+body
+html
